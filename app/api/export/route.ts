@@ -1,7 +1,6 @@
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 
 export const runtime = "nodejs";
@@ -12,6 +11,8 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { prisma } = await import("@/lib/prisma");
 
   const movements = await prisma.aircraftMovement.findMany({
     orderBy: { createdAt: "desc" },
