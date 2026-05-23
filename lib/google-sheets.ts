@@ -46,7 +46,7 @@ function toA1SheetRange(sheetName: string, columns: string) {
 async function resolveSheetRange(sheetId: string) {
   const configuredSheetName = process.env.GOOGLE_SHEET_NAME?.trim();
   if (configuredSheetName) {
-    return toA1SheetRange(configuredSheetName, "A:I");
+    return { sheetName: configuredSheetName, range: toA1SheetRange(configuredSheetName, "A:I") };
   }
 
   const auth = getGoogleAuth();
@@ -61,7 +61,7 @@ async function resolveSheetRange(sheetId: string) {
     throw new Error("Spreadsheet has no sheets/tab. Create one tab first.");
   }
 
-  return toA1SheetRange(firstSheetName, "A:I");
+  return { sheetName: firstSheetName, range: toA1SheetRange(firstSheetName, "A:I") };
 }
 
 export async function appendMovementRow(movement: AircraftMovement) {
@@ -70,10 +70,28 @@ export async function appendMovementRow(movement: AircraftMovement) {
     console.warn("GOOGLE_SHEET_ID is missing. Skip sync.");
     return;
   }
-
-  const range = await resolveSheetRange(sheetId);
+  const { sheetName, range } = await resolveSheetRange(sheetId);
   const auth = getGoogleAuth();
   const sheets = google.sheets({ version: "v4", auth });
+
+  // Ensure column A has header and an array formula to auto-number rows based on column B
+  const headerRange = toA1SheetRange(sheetName, "A1:A2");
+  try {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: headerRange,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [
+          ["No"],
+          ["=ARRAYFORMULA(IF(B2:B<>\"\",ROW(B2:B)-1,\"\"))"],
+        ],
+      },
+    });
+  } catch (err) {
+    // non-fatal: keep going even if setting the formula fails
+    console.warn("Failed to ensure numbering formula in column A:", err);
+  }
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
