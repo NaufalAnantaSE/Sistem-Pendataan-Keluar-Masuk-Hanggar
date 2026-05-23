@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+} 
+
+model AircraftMovement {
+  id           String   @id @default(uuid())
+  logDate      DateTime
+  registration String
+  aircraftType String
+  amcOfficer   String
+  entryDate    DateTime
+  entryTime    String
+  exitDate     DateTime
+  exitTime     String
+  createdAt    DateTime @default(now())
+
+  @@index([registration])
+  @@index([aircraftType])
+  @@index([amcOfficer])
+  @@index([logDate])
+}
